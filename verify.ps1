@@ -91,7 +91,11 @@ Write-Host "  Compilation réussie sans aucun avertissement." -ForegroundColor G
 
 # 5. Exécution des tests et collecte OpenCover
 Write-Host "`n[5/6] Exécution des tests unitaires et de couverture OpenCover..." -ForegroundColor Yellow
-dotnet test $SolutionPath --no-build --configuration Release --logger "trx" --collect:"XPlat Code Coverage;Format=opencover" --results-directory "$ScriptRoot/TestResults"
+$settingsArg = @()
+if (Test-Path "$ScriptRoot/coverlet.runsettings") {
+    $settingsArg = @("--settings", "$ScriptRoot/coverlet.runsettings")
+}
+dotnet test $SolutionPath --no-build --configuration Release --logger "trx" --collect:"XPlat Code Coverage;Format=opencover" --results-directory "$ScriptRoot/TestResults" @settingsArg
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Des tests unitaires ou d'architecture ont échoué."
     exit $LASTEXITCODE

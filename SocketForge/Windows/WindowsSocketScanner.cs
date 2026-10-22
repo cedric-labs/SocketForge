@@ -83,7 +83,7 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
         return records;
     }
 
-    private static SocketFlowDirection DetermineDirection(SocketEndpoint local, SocketEndpoint remote, uint state)
+    internal static SocketFlowDirection DetermineDirection(SocketEndpoint local, SocketEndpoint remote, uint state)
     {
         if (state == 2 || remote.Address.Equals(IPAddress.Any) || remote.Port == 0)
         {
@@ -108,7 +108,7 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
         return (int)(((port & 0xFF) << 8) | ((port >> 8) & 0xFF));
     }
 
-    private static string MapTcpState(uint state)
+    internal static string MapTcpState(uint state)
     {
         return state switch
         {

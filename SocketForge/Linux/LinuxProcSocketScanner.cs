@@ -9,9 +9,10 @@ namespace SocketForge.Linux;
 /// <summary>
 /// Scanneur de sockets Linux basé sur l'analyse de /proc/net.
 /// </summary>
-public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) : ISocketScanner
+public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, string procRoot = "/proc") : ISocketScanner
 {
     private readonly IProcessInspector _processInspector = processInspector ?? throw new ArgumentNullException(nameof(processInspector));
+    private readonly string _procRoot = string.IsNullOrWhiteSpace(procRoot) ? "/proc" : procRoot;
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<ActiveSocketConnection>> ScanSocketsAsync(CancellationToken cancellationToken = default)
@@ -19,22 +20,38 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) :
         var records = new List<ActiveSocketConnection>();
         var inodeToPid = BuildInodeToPidMap();
 
-        if (File.Exists("/proc/net/tcp"))
+        var tcpPath = Path.Combine(_procRoot, "net", "tcp");
+        if (File.Exists(tcpPath))
         {
-            var tcpLines = await File.ReadAllLinesAsync("/proc/net/tcp", cancellationToken).ConfigureAwait(false);
-            ParseProcNetLines(tcpLines, SocketTransportProtocol.Tcp, inodeToPid, records, cancellationToken);
+            var tcpLines = await File.ReadAllLinesAsync(tcpPath, cancellationToken).ConfigureAwait(false);
+            await ParseProcNetLinesAsync(tcpLines, SocketTransportProtocol.Tcp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
         }
 
-        if (File.Exists("/proc/net/udp"))
+        var tcp6Path = Path.Combine(_procRoot, "net", "tcp6");
+        if (File.Exists(tcp6Path))
         {
-            var udpLines = await File.ReadAllLinesAsync("/proc/net/udp", cancellationToken).ConfigureAwait(false);
-            ParseProcNetLines(udpLines, SocketTransportProtocol.Udp, inodeToPid, records, cancellationToken);
+            var tcp6Lines = await File.ReadAllLinesAsync(tcp6Path, cancellationToken).ConfigureAwait(false);
+            await ParseProcNetLinesAsync(tcp6Lines, SocketTransportProtocol.Tcp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
+        }
+
+        var udpPath = Path.Combine(_procRoot, "net", "udp");
+        if (File.Exists(udpPath))
+        {
+            var udpLines = await File.ReadAllLinesAsync(udpPath, cancellationToken).ConfigureAwait(false);
+            await ParseProcNetLinesAsync(udpLines, SocketTransportProtocol.Udp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
+        }
+
+        var udp6Path = Path.Combine(_procRoot, "net", "udp6");
+        if (File.Exists(udp6Path))
+        {
+            var udp6Lines = await File.ReadAllLinesAsync(udp6Path, cancellationToken).ConfigureAwait(false);
+            await ParseProcNetLinesAsync(udp6Lines, SocketTransportProtocol.Udp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
         }
 
         return records;
     }
 
-    private void ParseProcNetLines(
+    private async Task ParseProcNetLinesAsync(
         string[] lines,
         SocketTransportProtocol protocol,
         Dictionary<string, int> inodeToPid,
@@ -62,9 +79,9 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) :
             var inode = parts[9];
 
             _ = inodeToPid.TryGetValue(inode, out var pid);
-            var process = _processInspector.ResolveProcessAsync(pid, cancellationToken).GetAwaiter().GetResult();
+            var process = await _processInspector.ResolveProcessAsync(pid, cancellationToken).ConfigureAwait(false);
 
-            var direction = remoteEp.Port == 0 || remoteEp.Address.Equals(IPAddress.Any)
+            var direction = remoteEp.Port == 0 || remoteEp.Address.Equals(IPAddress.Any) || remoteEp.Address.Equals(IPAddress.IPv6Any)
                 ? SocketFlowDirection.Listening
                 : SocketFlowDirection.Outbound;
 
@@ -86,10 +103,29 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) :
             return new SocketEndpoint(IPAddress.Any, 0);
         }
 
-        var ipInt = uint.Parse(tokens[0], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+        var ipHex = tokens[0];
         var port = int.Parse(tokens[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
-        return new SocketEndpoint(new IPAddress(ipInt), port);
+        if (ipHex.Length == 8)
+        {
+            var ipInt = uint.Parse(ipHex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            return new SocketEndpoint(new IPAddress(ipInt), port);
+        }
+
+        if (ipHex.Length == 32)
+        {
+            var bytes = new byte[16];
+            for (var i = 0; i < 4; i++)
+            {
+                var chunk = uint.Parse(ipHex.Substring(i * 8, 8), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                var chunkBytes = BitConverter.GetBytes(chunk);
+                Array.Copy(chunkBytes, 0, bytes, i * 4, 4);
+            }
+
+            return new SocketEndpoint(new IPAddress(bytes), port);
+        }
+
+        return new SocketEndpoint(IPAddress.Any, port);
     }
 
     private static string MapLinuxState(string stateHex)
@@ -110,17 +146,17 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) :
         };
     }
 
-    private static Dictionary<string, int> BuildInodeToPidMap()
+    private Dictionary<string, int> BuildInodeToPidMap()
     {
         var map = new Dictionary<string, int>(StringComparer.Ordinal);
-        if (!Directory.Exists("/proc"))
+        if (!Directory.Exists(_procRoot))
         {
             return map;
         }
 
         try
         {
-            var procDirs = Directory.GetDirectories("/proc");
+            var procDirs = Directory.GetDirectories(_procRoot);
             foreach (var dir in procDirs)
             {
                 var dirName = Path.GetFileName(dir);
@@ -140,11 +176,16 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector) :
                     var links = Directory.GetFiles(fdDir);
                     foreach (var link in links)
                     {
-                        var target = File.ResolveLinkTarget(link, returnFinalTarget: false);
-                        if (target is not null && target.FullName.StartsWith("socket:[", StringComparison.Ordinal))
+                        var linkTarget = new FileInfo(link).LinkTarget ?? File.ResolveLinkTarget(link, returnFinalTarget: false)?.FullName;
+                        if (linkTarget is not null && linkTarget.Contains("socket:[", StringComparison.Ordinal))
                         {
-                            var inode = target.FullName.Replace("socket:[", "", StringComparison.Ordinal).Replace("]", "", StringComparison.Ordinal);
-                            map[inode] = pid;
+                            var startIdx = linkTarget.IndexOf("socket:[", StringComparison.Ordinal) + "socket:[".Length;
+                            var endIdx = linkTarget.IndexOf(']', startIdx);
+                            if (endIdx > startIdx)
+                            {
+                                var inode = linkTarget[startIdx..endIdx];
+                                map[inode] = pid;
+                            }
                         }
                     }
                 }
