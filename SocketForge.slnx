@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SocketForge.Tests/SocketForge.Tests.csproj" />
+  <Project Path="SocketForge/SocketForge.csproj" />
+</Solution>
