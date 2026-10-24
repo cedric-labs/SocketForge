@@ -98,7 +98,7 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
         SocketEndpoint local,
         SocketEndpoint remote,
         uint state,
-        IReadOnlySet<int>? listeningPorts = null)
+        IReadOnlySet<int>? listeningPorts)
     {
         return SocketFlowDirectionResolver.Resolve(local, remote, isListeningState: state == 2, listeningPorts);
     }
