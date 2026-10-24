@@ -1,18 +1,51 @@
 # SocketForge
 
-Framework partagé .NET d'observation, d'énumération et d'analyse des flux et sockets réseau (TCP/UDP) actifs au niveau système (Windows & Linux), **sans installation de pilote tiers ni dépendance Npcap/WinPcap**.
+Cross-platform active TCP and UDP socket scanner for .NET, inspecting listening ports, established connections, and binding owning process metadata across Windows and Linux.
 
-## 🚀 Capacités Clés
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Framework](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
 
-* **Zéro Npcap** :
-  * Windows : inspection via l'API Win32 IP Helper (`iphlpapi.dll` : `GetExtendedTcpTable`, `GetExtendedUdpTable`).
-  * Linux : inspection via le pseudo-système `/proc/net/tcp`, `/proc/net/udp` et corrélation des inodes de sockets dans `/proc/<pid>/fd`.
-* **Résolution de direction de flux (`SocketFlowDirectionResolver`)** :
-  * Détection précise et cohérente des directions `Listening`, `Inbound` et `Outbound` sur Windows et Linux.
-  * Indexation des sockets d'écoute locale (`LISTEN` / `0A` / State 2) pour qualifier formellement les connexions entrantes vers un service hébergé (SSH, HTTP, bases de données, etc.).
-  * Heuristiques de repli fondées sur les plages dynamiques/éphémères (Linux `>= 32768`, IANA `>= 49152`) et privilégiées (`< 1024`).
-* **Corrélation Processus** :
-  * Liaison directe de chaque socket active au processus propriétaire résolu via **`ProcessForge`**.
-* **Typage fort & Clé d'unicité logique** :
-  * Modélisation immuable (`ActiveSocketConnection`, `SocketEndpoint`, `SocketTransportProtocol`, `SocketFlowDirection`).
-  * Clé de dédoublonnage canonique préservant l'identité applicative des flux sortants indépendamment des ports locaux éphémères.
+---
+
+## Key Capabilities
+
+* **Native Kernel Inspections**:
+  * **Windows**: Uses Win32 IP Helper API (GetExtendedTcpTable, GetExtendedUdpTable) for fast, non-blocking socket enumeration.
+  * **Linux**: Parses kernel virtual filesystem entries (/proc/net/tcp, /proc/net/tcp6, /proc/net/udp, /proc/net/udp6).
+* **Process Attribution**: Binds local network endpoints to the specific process ID (PID) and process metadata responsible for network communication.
+* **Full Socket State Coverage**:
+  * Listening endpoints (Listen, Bind).
+  * Active connections (Established, TimeWait, CloseWait, SynSent).
+* **IPv4 & IPv6 Dual-Stack Support**: Transparent handling of both IPv4 and IPv6 network sockets.
+
+---
+
+## Installation
+
+Add the package via the .NET CLI:
+
+`powershell
+dotnet add package SocketForge --version 1.0.2
+`
+
+---
+
+## Code Example
+
+`csharp
+using SocketForge.Scanning;
+
+var scanner = new ActiveSocketScanner();
+var sockets = await scanner.ScanActiveSocketsAsync();
+
+foreach (var socket in sockets)
+{
+    Console.WriteLine($"[{socket.Protocol}] {socket.LocalAddress}:{socket.LocalPort} -> {socket.RemoteAddress}:{socket.RemotePort} (PID: {socket.ProcessId}, State: {socket.State})");
+}
+`
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
