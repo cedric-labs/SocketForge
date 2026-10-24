@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using ProcessForge.Contracts;
 using SocketForge.Contracts;
 using SocketForge.Models;
+using SocketForge.Resolution;
 
 namespace SocketForge.Windows;
 
@@ -41,6 +42,16 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
         var records = new List<ActiveSocketConnection>();
 
         var tcpRows = ReadNativeTcpTable();
+        var listeningPorts = new HashSet<int>();
+        for (var i = 0; i < tcpRows.Count; i++)
+        {
+            var row = tcpRows[i];
+            if (row.State == 2 || ConvertPort(row.RemotePort) == 0)
+            {
+                listeningPorts.Add(ConvertPort(row.LocalPort));
+            }
+        }
+
         for (var i = 0; i < tcpRows.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -50,7 +61,7 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
             var localEp = new SocketEndpoint(new IPAddress(row.LocalAddr), ConvertPort(row.LocalPort));
             var remoteEp = new SocketEndpoint(new IPAddress(row.RemoteAddr), ConvertPort(row.RemotePort));
 
-            var direction = DetermineDirection(localEp, remoteEp, row.State);
+            var direction = DetermineDirection(localEp, remoteEp, row.State, listeningPorts);
 
             records.Add(new ActiveSocketConnection(
                 Protocol: SocketTransportProtocol.Tcp,
@@ -83,25 +94,17 @@ public sealed class WindowsSocketScanner(IProcessInspector processInspector) : I
         return records;
     }
 
-    internal static SocketFlowDirection DetermineDirection(SocketEndpoint local, SocketEndpoint remote, uint state)
+    internal static SocketFlowDirection DetermineDirection(
+        SocketEndpoint local,
+        SocketEndpoint remote,
+        uint state,
+        IReadOnlySet<int>? listeningPorts = null)
     {
-        if (state == 2 || remote.Address.Equals(IPAddress.Any) || remote.Port == 0)
-        {
-            return SocketFlowDirection.Listening;
-        }
-
-        if (local.Port > 1024 && remote.Port < 1024)
-        {
-            return SocketFlowDirection.Outbound;
-        }
-
-        if (local.Port < 1024 && remote.Port > 1024)
-        {
-            return SocketFlowDirection.Inbound;
-        }
-
-        return SocketFlowDirection.Outbound;
+        return SocketFlowDirectionResolver.Resolve(local, remote, isListeningState: state == 2, listeningPorts);
     }
+
+    internal static SocketFlowDirection DetermineDirection(SocketEndpoint local, SocketEndpoint remote, uint state) =>
+        DetermineDirection(local, remote, state, listeningPorts: null);
 
     private static int ConvertPort(uint port)
     {

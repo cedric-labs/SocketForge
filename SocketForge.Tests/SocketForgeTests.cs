@@ -257,4 +257,46 @@ public sealed class SocketForgeTests
             }
         }
     }
+
+    [Fact]
+    public async Task LinuxProcSocketScanner_WhenInboundConnectionReceivedOnListeningPort_ResolvesDirectionAsInbound()
+    {
+        // Arrange : simulation SSH (port 22) recevant une connexion entrante depuis un port éphémère client (52205 / 0xCBED)
+        var tempDir = Path.Combine(Path.GetTempPath(), "socketforge_ssh_test_" + Guid.NewGuid().ToString("N"));
+        var netDir = Path.Combine(tempDir, "net");
+        Directory.CreateDirectory(netDir);
+
+        try
+        {
+            var tcpContent = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n" +
+                             "   0: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 11111 1 0000000000000000 100 0 0 10 0\n" +
+                             "   1: 2A01A8C0:0016 1401A8C0:CBED 01 00000000:00000000 00:00000000 00000000  1000        0 11112 1 0000000000000000 100 0 0 10 0\n";
+            await File.WriteAllTextAsync(Path.Combine(netDir, "tcp"), tcpContent);
+
+            var inspector = new StubProcessInspector();
+            var scanner = new LinuxProcSocketScanner(inspector, tempDir);
+
+            // Act
+            var connections = await scanner.ScanSocketsAsync(CancellationToken.None);
+
+            // Assert
+            connections.Should().HaveCount(2);
+
+            var listener = connections.Single(c => c.State == "Listen");
+            listener.LocalEndpoint.Port.Should().Be(22);
+            listener.Direction.Should().Be(SocketFlowDirection.Listening);
+
+            var inboundConn = connections.Single(c => c.State == "Established");
+            inboundConn.LocalEndpoint.Port.Should().Be(22);
+            inboundConn.RemoteEndpoint.Port.Should().Be(52205);
+            inboundConn.Direction.Should().Be(SocketFlowDirection.Inbound);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
 }

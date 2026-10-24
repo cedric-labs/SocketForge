@@ -3,6 +3,7 @@ using System.Net;
 using ProcessForge.Contracts;
 using SocketForge.Contracts;
 using SocketForge.Models;
+using SocketForge.Resolution;
 
 namespace SocketForge.Linux;
 
@@ -21,40 +22,90 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, s
         var inodeToPid = BuildInodeToPidMap();
 
         var tcpPath = Path.Combine(_procRoot, "net", "tcp");
-        if (File.Exists(tcpPath))
-        {
-            var tcpLines = await File.ReadAllLinesAsync(tcpPath, cancellationToken).ConfigureAwait(false);
-            await ParseProcNetLinesAsync(tcpLines, SocketTransportProtocol.Tcp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
-        }
+        var tcpLines = File.Exists(tcpPath)
+            ? await File.ReadAllLinesAsync(tcpPath, cancellationToken).ConfigureAwait(false)
+            : [];
 
         var tcp6Path = Path.Combine(_procRoot, "net", "tcp6");
-        if (File.Exists(tcp6Path))
-        {
-            var tcp6Lines = await File.ReadAllLinesAsync(tcp6Path, cancellationToken).ConfigureAwait(false);
-            await ParseProcNetLinesAsync(tcp6Lines, SocketTransportProtocol.Tcp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
-        }
+        var tcp6Lines = File.Exists(tcp6Path)
+            ? await File.ReadAllLinesAsync(tcp6Path, cancellationToken).ConfigureAwait(false)
+            : [];
 
         var udpPath = Path.Combine(_procRoot, "net", "udp");
-        if (File.Exists(udpPath))
-        {
-            var udpLines = await File.ReadAllLinesAsync(udpPath, cancellationToken).ConfigureAwait(false);
-            await ParseProcNetLinesAsync(udpLines, SocketTransportProtocol.Udp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
-        }
+        var udpLines = File.Exists(udpPath)
+            ? await File.ReadAllLinesAsync(udpPath, cancellationToken).ConfigureAwait(false)
+            : [];
 
         var udp6Path = Path.Combine(_procRoot, "net", "udp6");
-        if (File.Exists(udp6Path))
+        var udp6Lines = File.Exists(udp6Path)
+            ? await File.ReadAllLinesAsync(udp6Path, cancellationToken).ConfigureAwait(false)
+            : [];
+
+        var listeningPorts = CollectListeningPorts(tcpLines, tcp6Lines, udpLines, udp6Lines);
+
+        if (tcpLines.Length > 0)
         {
-            var udp6Lines = await File.ReadAllLinesAsync(udp6Path, cancellationToken).ConfigureAwait(false);
-            await ParseProcNetLinesAsync(udp6Lines, SocketTransportProtocol.Udp, inodeToPid, records, cancellationToken).ConfigureAwait(false);
+            await ParseProcNetLinesAsync(tcpLines, SocketTransportProtocol.Tcp, inodeToPid, listeningPorts, records, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (tcp6Lines.Length > 0)
+        {
+            await ParseProcNetLinesAsync(tcp6Lines, SocketTransportProtocol.Tcp, inodeToPid, listeningPorts, records, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (udpLines.Length > 0)
+        {
+            await ParseProcNetLinesAsync(udpLines, SocketTransportProtocol.Udp, inodeToPid, listeningPorts, records, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (udp6Lines.Length > 0)
+        {
+            await ParseProcNetLinesAsync(udp6Lines, SocketTransportProtocol.Udp, inodeToPid, listeningPorts, records, cancellationToken).ConfigureAwait(false);
         }
 
         return records;
+    }
+
+    private static HashSet<int> CollectListeningPorts(params string[][] lineSets)
+    {
+        var listeningPorts = new HashSet<int>();
+        foreach (var lines in lineSets)
+        {
+            for (var i = 1; i < lines.Length; i++)
+            {
+                var line = lines[i].Trim();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    continue;
+                }
+
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 4)
+                {
+                    continue;
+                }
+
+                var stateHex = parts[3];
+                if (string.Equals(stateHex, "0A", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(stateHex, "07", StringComparison.OrdinalIgnoreCase))
+                {
+                    var localEp = ParseEndpoint(parts[1]);
+                    if (localEp.Port > 0)
+                    {
+                        listeningPorts.Add(localEp.Port);
+                    }
+                }
+            }
+        }
+
+        return listeningPorts;
     }
 
     private async Task ParseProcNetLinesAsync(
         string[] lines,
         SocketTransportProtocol protocol,
         Dictionary<string, int> inodeToPid,
+        IReadOnlySet<int> listeningPorts,
         List<ActiveSocketConnection> records,
         CancellationToken cancellationToken)
     {
@@ -81,9 +132,12 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, s
             _ = inodeToPid.TryGetValue(inode, out var pid);
             var process = await _processInspector.ResolveProcessAsync(pid, cancellationToken).ConfigureAwait(false);
 
-            var direction = remoteEp.Port == 0 || remoteEp.Address.Equals(IPAddress.Any) || remoteEp.Address.Equals(IPAddress.IPv6Any)
-                ? SocketFlowDirection.Listening
-                : SocketFlowDirection.Outbound;
+            var isListening = string.Equals(stateHex, "0A", StringComparison.OrdinalIgnoreCase) ||
+                              remoteEp.Port == 0 ||
+                              remoteEp.Address.Equals(IPAddress.Any) ||
+                              remoteEp.Address.Equals(IPAddress.IPv6Any);
+
+            var direction = SocketFlowDirectionResolver.Resolve(localEp, remoteEp, isListening, listeningPorts);
 
             records.Add(new ActiveSocketConnection(
                 Protocol: protocol,
