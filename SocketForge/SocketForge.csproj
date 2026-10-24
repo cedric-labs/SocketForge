@@ -17,7 +17,7 @@
     <Authors>curvecoder</Authors>
     <Company>curvecoder</Company>
     <Description>Cross-platform active socket scanner for Win32 and Linux.</Description>
-    <RepositoryUrl>https://github.com/curvecoder/NetFlowAudit</RepositoryUrl>
+    <RepositoryUrl>https://github.com/curvecoder/SocketForge</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
