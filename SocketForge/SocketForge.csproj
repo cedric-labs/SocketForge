@@ -12,6 +12,18 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>SocketForge</PackageId>
+    <Version>1.0.1</Version>
+    <Authors>curvecoder</Authors>
+    <Company>curvecoder</Company>
+    <Description>Cross-platform active socket scanner for Win32 and Linux.</Description>
+    <RepositoryUrl>https://github.com/curvecoder/NetFlowAudit</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\FRAMEWORK.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
 
 </Project>
