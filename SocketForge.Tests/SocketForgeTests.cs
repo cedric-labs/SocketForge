@@ -1,5 +1,5 @@
 using System.Net;
-using FluentAssertions;
+using AwesomeAssertions;
 using ProcessForge.Contracts;
 using ProcessForge.Models;
 using SocketForge.Factories;

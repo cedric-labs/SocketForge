@@ -1,5 +1,5 @@
 using System.Net;
-using FluentAssertions;
+using AwesomeAssertions;
 using SocketForge.Models;
 using SocketForge.Resolution;
 using Xunit;
