@@ -24,7 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SocketForge\SocketForge.csproj" />
-    <ProjectReference Include="..\..\ProcessForge\ProcessForge\ProcessForge.csproj" />
   </ItemGroup>
 
 </Project>
