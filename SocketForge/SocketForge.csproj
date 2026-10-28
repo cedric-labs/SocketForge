@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ProcessForge\ProcessForge\ProcessForge.csproj" />
+    <PackageReference Include="ProcessForge" Version="1.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -13,7 +13,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>SocketForge</PackageId>
-    <Version>1.0.2</Version>
     <Authors>curvecoder</Authors>
     <Company>curvecoder</Company>
     <Description>Cross-platform active socket scanner for Win32 and Linux.</Description>
