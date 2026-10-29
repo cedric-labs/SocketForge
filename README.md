@@ -29,7 +29,7 @@ Cross-platform active TCP and UDP socket scanner for .NET, inspecting listening 
 Add the package via the .NET CLI:
 
 ```powershell
-dotnet add package SocketForge --version 1.1.0
+dotnet add package SocketForge --version 1.1.1
 ```
 
 ---
