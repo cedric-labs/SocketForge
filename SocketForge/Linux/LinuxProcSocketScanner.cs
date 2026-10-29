@@ -8,7 +8,7 @@ using SocketForge.Resolution;
 namespace SocketForge.Linux;
 
 /// <summary>
-/// Scanneur de sockets Linux basé sur l'analyse de /proc/net.
+/// Linux socket scanner that parses /proc/net.
 /// </summary>
 public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, string procRoot = "/proc") : ISocketScanner
 {
@@ -245,7 +245,7 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, s
                 }
                 catch (IOException)
                 {
-                    // Erreur lecture I/O
+                    // I/O read error
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -255,7 +255,7 @@ public sealed class LinuxProcSocketScanner(IProcessInspector processInspector, s
         }
         catch (IOException)
         {
-            // Erreur globale /proc
+            // /proc cannot be read as a whole
         }
 
         return map;

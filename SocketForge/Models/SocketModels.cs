@@ -3,7 +3,7 @@ using System.Net;
 namespace SocketForge.Models;
 
 /// <summary>
-/// Représente le protocole de transport réseau.
+/// Network transport protocol.
 /// </summary>
 public enum SocketTransportProtocol
 {
@@ -19,45 +19,45 @@ public enum SocketTransportProtocol
 }
 
 /// <summary>
-/// Direction logique d'un flux par rapport au point d'observation local.
+/// Logical direction of a flow, seen from the local host.
 /// </summary>
 public enum SocketFlowDirection
 {
     /// <summary>
-    /// Direction indéterminée.
+    /// Unknown direction.
     /// </summary>
     Unknown,
 
     /// <summary>
-    /// Connexion entrante vers un service local.
+    /// Inbound connection to a local service.
     /// </summary>
     Inbound,
 
     /// <summary>
-    /// Connexion sortante initiée localement vers l'extérieur.
+    /// Outbound connection opened locally.
     /// </summary>
     Outbound,
 
     /// <summary>
-    /// Socket en écoute locale (Listen).
+    /// Local listening socket (Listen).
     /// </summary>
     Listening
 }
 
 /// <summary>
-/// Point de terminaison réseau typé (IP et Port).
+/// Typed network endpoint (IP address and port).
 /// </summary>
 public readonly record struct SocketEndpoint
 {
     /// <summary>
-    /// Initialise un nouveau point de terminaison réseau.
+    /// Creates a network endpoint.
     /// </summary>
     public SocketEndpoint(IPAddress address, int port)
     {
         ArgumentNullException.ThrowIfNull(address);
         if (port is < 0 or > 65535)
         {
-            throw new ArgumentOutOfRangeException(nameof(port), port, "Le port réseau doit être compris entre 0 et 65535.");
+            throw new ArgumentOutOfRangeException(nameof(port), port, "The network port must be between 0 and 65535.");
         }
 
         Address = address;
@@ -70,7 +70,7 @@ public readonly record struct SocketEndpoint
     public IPAddress Address { get; }
 
     /// <summary>
-    /// Numéro de port.
+    /// Port number.
     /// </summary>
     public int Port { get; }
 

@@ -8,7 +8,7 @@ using SocketForge.Resolution;
 namespace SocketForge.Windows;
 
 /// <summary>
-/// Scanneur de sockets Windows exploitant l'API native IP Helper (iphlpapi.dll).
+/// Windows socket scanner built on the native IP Helper API (iphlpapi.dll).
 /// </summary>
 public sealed class WindowsSocketScanner(IProcessInspector processInspector) : ISocketScanner
 {

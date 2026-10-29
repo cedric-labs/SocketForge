@@ -29,7 +29,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenLocalPortIsInListeningPorts_ReturnsInbound()
     {
-        // Arrange : Service local sur port 8080 (non privilégié mais en écoute), client distant sur port éphémère 54321
+        // Arrange: local service on port 8080 (not privileged but listening), remote client on ephemeral port 54321
         var local = new SocketEndpoint(IPAddress.Parse("192.168.1.100"), 8080);
         var remote = new SocketEndpoint(IPAddress.Parse("192.168.1.50"), 54321);
         var listeningPorts = new HashSet<int> { 80, 443, 8080 };
@@ -44,7 +44,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenSshConnectionReceivedOnPort22_ReturnsInbound()
     {
-        // Arrange : Cas PopOs SSH (port 22) recevant une connexion depuis Windows 11 (port éphémère 52145)
+        // Arrange: Pop!_OS SSH server (port 22) receiving a connection from Windows 11 (ephemeral port 52145)
         var local = new SocketEndpoint(IPAddress.Parse("192.168.1.42"), 22);
         var remote = new SocketEndpoint(IPAddress.Parse("192.168.1.20"), 52145);
         var listeningPorts = new HashSet<int> { 22 };
@@ -61,7 +61,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenRemotePortIsInListeningPortsAndLocalIsNot_ReturnsOutbound()
     {
-        // Arrange : Client local sur port éphémère 49200 se connectant à un service local 8080
+        // Arrange: local client on ephemeral port 49200 connecting to a local service on 8080
         var local = new SocketEndpoint(IPAddress.Parse("127.0.0.1"), 49200);
         var remote = new SocketEndpoint(IPAddress.Parse("127.0.0.1"), 8080);
         var listeningPorts = new HashSet<int> { 8080 };
@@ -76,7 +76,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenLocalPortIsPrivilegedAndRemoteIsEphemeralWithoutKnownListeners_ReturnsInbound()
     {
-        // Arrange : Port local 443, port distant 51234, sans liste d'écoute fournie
+        // Arrange: local port 443, remote port 51234, no listening ports given
         var local = new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 443);
         var remote = new SocketEndpoint(IPAddress.Parse("10.0.0.2"), 51234);
 
@@ -90,7 +90,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenLocalPortIsEphemeralAndRemoteIsPrivileged_ReturnsOutbound()
     {
-        // Arrange : Client local (port 52000) appelant un serveur distant (port 443)
+        // Arrange: local client (port 52000) calling a remote server (port 443)
         var local = new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 52000);
         var remote = new SocketEndpoint(IPAddress.Parse("1.1.1.1"), 443);
 
@@ -104,7 +104,7 @@ public sealed class SocketFlowDirectionResolverTests
     [Fact]
     public void Resolve_WhenBothPortsAreEphemeralAndLocalNotInListening_ReturnsOutbound()
     {
-        // Arrange : Deux ports éphémères (ex: P2P ou proxy dynamique)
+        // Arrange: two ephemeral ports (for example P2P or a dynamic proxy)
         var local = new SocketEndpoint(IPAddress.Parse("10.0.0.1"), 50000);
         var remote = new SocketEndpoint(IPAddress.Parse("10.0.0.2"), 50001);
 

@@ -3,14 +3,14 @@ using ProcessForge.Models;
 namespace SocketForge.Models;
 
 /// <summary>
-/// Représentation immuable d'une socket réseau active et de son processus propriétaire.
+/// Immutable view of an active network socket and its owning process.
 /// </summary>
-/// <param name="Protocol">Protocole de transport.</param>
-/// <param name="Direction">Direction déterminée du flux.</param>
-/// <param name="LocalEndpoint">Point de terminaison local.</param>
-/// <param name="RemoteEndpoint">Point de terminaison distant.</param>
-/// <param name="State">État textuel de la socket (ex: Established, Listen, etc.).</param>
-/// <param name="Process">Métadonnées du processus propriétaire résolu via ProcessForge.</param>
+/// <param name="Protocol">Transport protocol.</param>
+/// <param name="Direction">Resolved flow direction.</param>
+/// <param name="LocalEndpoint">Local endpoint.</param>
+/// <param name="RemoteEndpoint">Remote endpoint.</param>
+/// <param name="State">Socket state as text (for example Established or Listen).</param>
+/// <param name="Process">Metadata of the owning process, resolved through ProcessForge.</param>
 public sealed record ActiveSocketConnection(
     SocketTransportProtocol Protocol,
     SocketFlowDirection Direction,
@@ -20,7 +20,7 @@ public sealed record ActiveSocketConnection(
     ProcessMetadata Process)
 {
     /// <summary>
-    /// Calcule la clé canonique de dédoublonnage logique de cette socket.
+    /// Computes the canonical key used to deduplicate this socket.
     /// </summary>
     public string ComputeLogicalKey()
     {

@@ -6,12 +6,12 @@ using SocketForge.Windows;
 namespace SocketForge.Factories;
 
 /// <summary>
-/// Fabrique de résolveurs de sockets adaptés au système d'exploitation hôte.
+/// Creates the socket scanner that matches the host operating system.
 /// </summary>
 public static class SocketScannerFactory
 {
     /// <summary>
-    /// Crée l'instance de scanneur de sockets adaptée au système d'exploitation d'exécution.
+    /// Creates the socket scanner for the operating system the process runs on.
     /// </summary>
     public static ISocketScanner Create(IProcessInspector processInspector)
     {
@@ -27,6 +27,6 @@ public static class SocketScannerFactory
             return new LinuxProcSocketScanner(processInspector);
         }
 
-        throw new PlatformNotSupportedException($"Le système d'exploitation {Environment.OSVersion.Platform} n'est pas pris en charge.");
+        throw new PlatformNotSupportedException($"The {Environment.OSVersion.Platform} operating system is not supported.");
     }
 }

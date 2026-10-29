@@ -4,29 +4,29 @@ using SocketForge.Models;
 namespace SocketForge.Resolution;
 
 /// <summary>
-/// Évaluateur de la direction logique des flux réseau (Listening, Inbound, Outbound)
-/// fondé sur l'état de la socket, l'indexation des ports d'écoute locaux et les heuristiques de ports éphémères.
+/// Resolves the logical direction of network flows (Listening, Inbound, Outbound)
+/// from the socket state, the index of local listening ports and ephemeral port heuristics.
 /// </summary>
 public static class SocketFlowDirectionResolver
 {
     /// <summary>
-    /// Seuil de port éphémère Linux par défaut (/proc/sys/net/ipv4/ip_local_port_range : 32768).
+    /// Default Linux ephemeral port threshold (/proc/sys/net/ipv4/ip_local_port_range: 32768).
     /// </summary>
     public const int EphemeralPortThreshold = 32768;
 
     /// <summary>
-    /// Seuil standard des ports privilégiés / réservés du système (< 1024).
+    /// Standard threshold of privileged system ports (below 1024).
     /// </summary>
     public const int PrivilegedPortThreshold = 1024;
 
     /// <summary>
-    /// Détermine la direction logique d'un flux réseau à partir des points de terminaison et des ports d'écoute connus.
+    /// Determines the logical direction of a network flow from its endpoints and the known listening ports.
     /// </summary>
-    /// <param name="local">Point de terminaison local.</param>
-    /// <param name="remote">Point de terminaison distant.</param>
-    /// <param name="isListeningState">Indique si l'état protocolaire correspond à une écoute passive (Listen / 0A / State 2).</param>
-    /// <param name="listeningPorts">Ensemble optionnel des ports locaux actifs en écoute sur la machine.</param>
-    /// <returns>La direction logique identifiée pour le flux.</returns>
+    /// <param name="local">Local endpoint.</param>
+    /// <param name="remote">Remote endpoint.</param>
+    /// <param name="isListeningState">Whether the protocol state is a passive listen (Listen / 0A / State 2).</param>
+    /// <param name="listeningPorts">Optional set of local ports currently listening on the machine.</param>
+    /// <returns>The logical direction of the flow.</returns>
     public static SocketFlowDirection Resolve(
         SocketEndpoint local,
         SocketEndpoint remote,
@@ -38,20 +38,20 @@ public static class SocketFlowDirectionResolver
             return SocketFlowDirection.Listening;
         }
 
-        // 1. Si le port local correspond à un port d'écoute actif hébergé par la machine, c'est formellement un flux entrant
+        // 1. A local port that is an active listening port of this machine makes the flow inbound
         if (listeningPorts is not null && listeningPorts.Contains(local.Port))
         {
             return SocketFlowDirection.Inbound;
         }
 
-        // 2. Si le port distant est un port d'écoute actif hébergé localement (flux loopback/intra-hôte)
-        // et que le port local n'écoute pas, il s'agit du client initiateur local
+        // 2. When the remote port is a port listening on this machine (loopback or intra-host flow)
+        // and the local port is not listening, this side is the local client that opened the connection
         if (listeningPorts is not null && listeningPorts.Contains(remote.Port))
         {
             return SocketFlowDirection.Outbound;
         }
 
-        // 3. Heuristique sur les plages de ports éphémères dynamiques (Linux >= 32768, IANA >= 49152)
+        // 3. Heuristic on the dynamic ephemeral port ranges (Linux >= 32768, IANA >= 49152)
         if (local.Port < EphemeralPortThreshold && remote.Port >= EphemeralPortThreshold)
         {
             return SocketFlowDirection.Inbound;
@@ -62,7 +62,7 @@ public static class SocketFlowDirectionResolver
             return SocketFlowDirection.Outbound;
         }
 
-        // 4. Heuristique sur les ports système privilégiés (< 1024)
+        // 4. Heuristic on the privileged system ports (below 1024)
         if (local.Port < PrivilegedPortThreshold && remote.Port >= PrivilegedPortThreshold)
         {
             return SocketFlowDirection.Inbound;
@@ -73,7 +73,7 @@ public static class SocketFlowDirectionResolver
             return SocketFlowDirection.Outbound;
         }
 
-        // 5. Par défaut pour les flux établis non identifiés par les ports de service
+        // 5. Default for established flows that no service port identifies
         return SocketFlowDirection.Outbound;
     }
 }

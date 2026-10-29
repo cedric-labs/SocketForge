@@ -3,14 +3,14 @@ using SocketForge.Models;
 namespace SocketForge.Contracts;
 
 /// <summary>
-/// Contrat d'énumération des connexions et sockets réseau du système hôte sans dépendance Npcap.
+/// Enumerates the network connections and sockets of the host system, without depending on Npcap.
 /// </summary>
 public interface ISocketScanner
 {
     /// <summary>
-    /// Scanne l'intégralité des connexions TCP et sockets UDP actives.
+    /// Scans all active TCP connections and UDP sockets.
     /// </summary>
-    /// <param name="cancellationToken">Jeton d'annulation coopérative.</param>
-    /// <returns>Collection des connexions réseau observées.</returns>
+    /// <param name="cancellationToken">Cooperative cancellation token.</param>
+    /// <returns>The observed network connections.</returns>
     Task<IReadOnlyList<ActiveSocketConnection>> ScanSocketsAsync(CancellationToken cancellationToken = default);
 }

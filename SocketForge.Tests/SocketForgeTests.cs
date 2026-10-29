@@ -261,7 +261,7 @@ public sealed class SocketForgeTests
     [Fact]
     public async Task LinuxProcSocketScanner_WhenInboundConnectionReceivedOnListeningPort_ResolvesDirectionAsInbound()
     {
-        // Arrange : simulation SSH (port 22) recevant une connexion entrante depuis un port éphémère client (52205 / 0xCBED)
+        // Arrange: simulated SSH server (port 22) receiving an inbound connection from an ephemeral client port (52205 / 0xCBED)
         var tempDir = Path.Combine(Path.GetTempPath(), "socketforge_ssh_test_" + Guid.NewGuid().ToString("N"));
         var netDir = Path.Combine(tempDir, "net");
         Directory.CreateDirectory(netDir);
