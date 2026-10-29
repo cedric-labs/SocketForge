@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="ProcessForge" Version="1.1.1" />
+    <PackageReference Include="ProcessForge" Version="1.1.2" />
   </ItemGroup>
 
   <ItemGroup>
